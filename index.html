@@ -23,7 +23,6 @@
             overflow-x: hidden;
         }
 
-        /* Анимированный фон */
         body::before {
             content: '';
             position: fixed;
@@ -56,7 +55,6 @@
             transition: all 0.3s ease;
         }
 
-        /* Логотип и название */
         .logo {
             text-align: center;
             margin-bottom: 30px;
@@ -212,6 +210,15 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
         }
 
+        .btn-rofl {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            margin-top: 8px;
+        }
+
+        .btn-rofl:hover {
+            box-shadow: 0 10px 40px rgba(255, 215, 0, 0.3);
+        }
+
         .message {
             margin-top: 16px;
             padding: 14px 18px;
@@ -262,11 +269,23 @@
             color: #ffd700;
         }
 
+        .message.rofl {
+            display: block;
+            background: rgba(255, 215, 0, 0.15);
+            border: 2px solid #ffd700;
+            color: #ffd700;
+            animation: roflGlow 1.5s ease-in-out infinite;
+        }
+
+        @keyframes roflGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.1); }
+            50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.3); }
+        }
+
         .hidden {
             display: none !important;
         }
 
-        /* Статистика */
         .stats {
             margin-top: 20px;
             padding-top: 18px;
@@ -284,6 +303,10 @@
         .stats .stat-value {
             color: #b0b0d0;
             font-weight: 600;
+        }
+
+        .stats .stat-value.rofl-count {
+            color: #ffd700;
         }
 
         .switch-link {
@@ -307,7 +330,6 @@
             font-weight: 700;
         }
 
-        /* Анимация загрузки */
         .spinner {
             display: inline-block;
             width: 16px;
@@ -324,7 +346,6 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Футер */
         .footer {
             text-align: center;
             margin-top: 20px;
@@ -337,7 +358,10 @@
             color: #ff6b35;
         }
 
-        /* Адаптив */
+        .footer .rofl-emoji {
+            color: #ffd700;
+        }
+
         @media (max-width: 480px) {
             .container {
                 padding: 28px 20px;
@@ -392,7 +416,7 @@
             <div id="registerMessage" class="message"></div>
 
             <div class="footer">
-                <span>●</span> I4S bot <span>●</span> 2026
+                <span>●</span> I4S bot <span>●</span> 2026 <span class="rofl-emoji">😂</span>
             </div>
         </div>
 
@@ -413,33 +437,37 @@
             </div>
 
             <button class="btn" id="checkPromoBtn">✅ Проверить</button>
+            <button class="btn btn-rofl" id="roflButton">😂 ROFL-код одним кликом!</button>
 
             <div id="promoMessage" class="message"></div>
 
             <button class="btn btn-secondary" id="logoutBtn">🚪 Сменить ник</button>
 
             <div class="stats">
-                <span>💎 Доступно: <span class="stat-value" id="promoCount">5</span></span>
+                <span>💎 Доступно: <span class="stat-value" id="promoCount">6</span></span>
                 <span>📊 Проверок: <span class="stat-value" id="totalChecks">0</span></span>
                 <span>🏆 Использовано: <span class="stat-value" id="usedCount">0</span></span>
+                <span>😂 ROFL: <span class="stat-value rofl-count" id="roflCount">0</span></span>
             </div>
 
             <div class="footer">
-                <span>●</span> I4S bot v2.0 <span>●</span>
+                <span>●</span> I4S bot v2.0 <span>●</span> <span class="rofl-emoji">🤣</span>
             </div>
         </div>
     </div>
 
     <script>
         // ============================================
-        // ДАННЫЕ: ПРОМОКОДЫ
+        // ДАННЫЕ: ПРОМОКОДЫ (включая ROFL)
         // ============================================
         const VALID_CODES = [
             { code: "Sa83nvjv94rb4jc8xhd", robux: 200 },
             { code: "Syrbqn_vurb4m12417vn", robux: 100 },
             { code: "Ajgnrteo4j3n2h5bcjth5bfk", robux: 300 },
             { code: "SyrbSGFGHru48ghv", robux: 400 },
-            { code: "Shtbvl[';gbjguthgbf(@*478", robux: 500 }
+            { code: "Shtbvl[';gbjguthgbf(@*478", robux: 500 },
+            // 🎉 ROFL-КОД
+            { code: "ROFLTEST127S4h8fn", robux: 10, isRofl: true }
         ];
 
         // ============================================
@@ -448,6 +476,7 @@
         let currentUser = null;
         let totalChecks = 0;
         let usedCodes = [];
+        let roflUsedCount = 0;
 
         // ============================================
         // DOM-ЭЛЕМЕНТЫ
@@ -466,6 +495,8 @@
         const promoCountSpan = document.getElementById('promoCount');
         const totalChecksSpan = document.getElementById('totalChecks');
         const usedCountSpan = document.getElementById('usedCount');
+        const roflCountSpan = document.getElementById('roflCount');
+        const roflButton = document.getElementById('roflButton');
 
         // ============================================
         // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -486,15 +517,16 @@
             return /^@[a-zA-Z0-9_]{3,29}$/.test(name);
         }
 
-        function sendEmail(username, robuxAmount) {
-            // В реальном проекте — AJAX-запрос к бэкенду
+        function sendEmail(username, robuxAmount, isRofl = false) {
+            const emoji = isRofl ? '😂 ROFL' : '💰';
             console.log(`📧 ПИСЬМО ОТПРАВЛЕНО (Playerok I4S bot):
             ──────────────────────────
             Кому: (ваша почта)
-            Тема: Активация промокода I4S
+            Тема: Активация промокода I4S ${isRofl ? '🎉 ROFL' : ''}
             ──────────────────────────
             Пользователь: ${username}
-            Получено Robux: ${robuxAmount}
+            ${emoji} Получено Robux: ${robuxAmount}
+            ${isRofl ? '🎭 ТИП: ROFL-ПРОМОКОД!' : ''}
             Дата: ${new Date().toLocaleString()}
             ──────────────────────────`);
         }
@@ -504,12 +536,94 @@
             promoCountSpan.textContent = available;
             totalChecksSpan.textContent = totalChecks;
             usedCountSpan.textContent = usedCodes.length;
+            roflCountSpan.textContent = roflUsedCount;
 
-            // Если кодов нет — меняем цвет
             if (available === 0) {
                 promoCountSpan.style.color = '#ff4757';
             } else {
                 promoCountSpan.style.color = '#b0b0d0';
+            }
+        }
+
+        // Основная логика проверки промокода
+        function processPromoCode(promo, isRoflAuto = false) {
+            if (!currentUser) {
+                showMessage(promoMessage, '⚠️ Сначала зарегистрируйтесь!', 'error');
+                return false;
+            }
+
+            if (!promo) {
+                showMessage(promoMessage, '⚠️ Введите промокод', 'error');
+                return false;
+            }
+
+            // Проверяем, не использовал ли этот пользователь уже этот код
+            if (currentUser.usedCodes.includes(promo)) {
+                showMessage(promoMessage, '❌ Вы уже активировали этот промокод!', 'error');
+                return false;
+            }
+
+            // Ищем код
+            const found = VALID_CODES.find(item => item.code === promo);
+
+            if (found) {
+                // Проверяем, не использован ли код глобально
+                if (usedCodes.includes(promo)) {
+                    showMessage(promoMessage, '❌ Этот промокод уже использован другим пользователем!', 'error');
+                    return false;
+                }
+
+                // ✅ Успех
+                const robuxAmount = found.robux;
+                const isRofl = found.isRofl || false;
+
+                usedCodes.push(promo);
+                currentUser.usedCodes.push(promo);
+                totalChecks++;
+
+                if (isRofl) {
+                    roflUsedCount++;
+                }
+
+                // Отправляем письмо
+                sendEmail(currentUser.username, robuxAmount, isRofl);
+
+                // Показываем сообщение
+                if (isRofl) {
+                    showMessage(promoMessage,
+                        `😂 ROFL-КОД АКТИВИРОВАН! ${robuxAmount} Robux поступят на баланс в течение 10-60 минут. ХА-ХА! 🤣`,
+                        'rofl'
+                    );
+                } else {
+                    showMessage(promoMessage,
+                        `🎉 Промокод активирован! ${robuxAmount} Robux поступят на баланс в течение 10-60 минут.`,
+                        'success'
+                    );
+                }
+
+                updateStats();
+                if (!isRoflAuto) {
+                    promoInput.value = '';
+                }
+
+                // Автоматически скрыть сообщение через 10 секунд
+                setTimeout(() => {
+                    if (promoMessage.className.includes('success') || promoMessage.className.includes('rofl')) {
+                        hideMessage(promoMessage);
+                    }
+                }, 10000);
+
+                return true;
+
+            } else {
+                // ❌ Неверный код
+                totalChecks++;
+                showMessage(promoMessage, '❌ Неверный промокод! Попробуйте снова.', 'error');
+                updateStats();
+                if (!isRoflAuto) {
+                    promoInput.value = '';
+                }
+                return false;
             }
         }
 
@@ -541,76 +655,38 @@
             robloxInput.value = '';
 
             updateStats();
-            showMessage(promoMessage, `👋 Добро пожаловать, ${username}! Введи промокод.`, 'info');
+            showMessage(promoMessage, `👋 Добро пожаловать, ${username}! Введи промокод или жми ROFL-кнопку!`, 'info');
         });
 
         // ============================================
-        // ПРОВЕРКА ПРОМОКОДА
+        // ПРОВЕРКА ПРОМОКОДА (обычная)
         // ============================================
         checkPromoBtn.addEventListener('click', function() {
             const promo = promoInput.value.trim();
+            processPromoCode(promo, false);
+        });
 
-            if (!currentUser) {
-                showMessage(promoMessage, '⚠️ Сначала зарегистрируйтесь!', 'error');
+        // ============================================
+        // ROFL-КНОПКА (автоматическая вставка ROFL-кода)
+        // ============================================
+        roflButton.addEventListener('click', function() {
+            const roflCode = "ROFLTEST127S4h8fn";
+            
+            // Проверяем, не использован ли ROFL-код уже
+            if (usedCodes.includes(roflCode)) {
+                showMessage(promoMessage, '😂 ROFL-код уже кто-то использовал! Смешно, но больше не работает! 🤣', 'warning');
                 return;
             }
 
-            if (!promo) {
-                showMessage(promoMessage, '⚠️ Введите промокод', 'error');
+            if (currentUser && currentUser.usedCodes.includes(roflCode)) {
+                showMessage(promoMessage, '😂 Ты уже активировал ROFL-код! Хватит смеяться! 🤣', 'warning');
                 return;
             }
 
-            // Проверяем, не использовал ли этот пользователь уже этот код
-            if (currentUser.usedCodes.includes(promo)) {
-                showMessage(promoMessage, '❌ Вы уже активировали этот промокод!', 'error');
-                promoInput.value = '';
-                return;
-            }
-
-            // Ищем код
-            const found = VALID_CODES.find(item => item.code === promo);
-
-            if (found) {
-                // Проверяем, не использован ли код глобально
-                if (usedCodes.includes(promo)) {
-                    showMessage(promoMessage, '❌ Этот промокод уже использован другим пользователем!', 'error');
-                    promoInput.value = '';
-                    return;
-                }
-
-                // ✅ Успех
-                const robuxAmount = found.robux;
-
-                usedCodes.push(promo);
-                currentUser.usedCodes.push(promo);
-                totalChecks++;
-
-                // Отправляем письмо
-                sendEmail(currentUser.username, robuxAmount);
-
-                // Показываем сообщение
-                showMessage(promoMessage,
-                    `🎉 Промокод активирован! ${robuxAmount} Robux поступят на баланс в течение 10-60 минут.`,
-                    'success'
-                );
-
-                updateStats();
-                promoInput.value = '';
-
-                // Автоматически скрыть сообщение через 10 секунд
-                setTimeout(() => {
-                    if (promoMessage.className.includes('success')) {
-                        hideMessage(promoMessage);
-                    }
-                }, 10000);
-
-            } else {
-                // ❌ Неверный код
-                totalChecks++;
-                showMessage(promoMessage, '❌ Неверный промокод! Попробуйте снова.', 'error');
-                updateStats();
-                promoInput.value = '';
-            }
+            // Автоматически вставляем и активируем ROFL-код
+            promoInput.value = roflCode;
+            processPromoCode(roflCode, true);
+            promoInput.value = '';
         });
 
         // ============================================
@@ -644,6 +720,7 @@
         updateStats();
         console.log('🤖 Playerok promo I4S bot загружен!');
         console.log('📋 Промокодов:', VALID_CODES.length);
+        console.log('😂 ROFL-код: ROFLTEST127S4h8fn (10 Robux)');
     </script>
 
 </body>
